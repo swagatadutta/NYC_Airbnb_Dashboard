@@ -50,10 +50,12 @@ app.layout = html.Div([
     dbc.Container(fluid=True, children=[
         dbc.Row([
         dbc.Row([
-            dbc.Col(html.H1("New York City Airbnb Dashboard", className="mb-2"), width="auto"),
-            dbc.Col(dbc.Button("About Dashboard", id="open-info-1", color="primary", className="mb-2 ml-2"),width="auto"),
-            dbc.Col(dbc.Button("How to Use this Dashboard", id="open-info-2", color="primary", className="mb-2 ml-2"),width="auto")
-        ], align="center"),
+            dbc.Col(html.H1("New York City Airbnb Dashboard", className="mb-2"), width="auto",className="col-7 "),
+            dbc.Col( dbc.Row([
+                dbc.Button("About Dashboard", id="open-info-1", color="primary", className="w-auto m-2"),
+                dbc.Button("How to Use this Dashboard", id="open-info-2", color="primary", className="w-auto m-2")
+            ],className="justify-content-end"), width="auto",className="col-5")
+        ], align="center", className="w-100"),
         dbc.Modal(
             [
                 dbc.ModalHeader(dbc.ModalTitle("About This Dashboard")),
@@ -186,7 +188,7 @@ app.layout = html.Div([
                 html.Div(id='top-nb-price-description', className="mb-2"),
                 ])], className="mb-4")
                 # ... potentially other components ...
-            ], width=5, style={'maxHeight': 'calc(100vh - 50px)', 'overflowY': 'scroll', 'paddingRight': 5}),
+            ], width=5, style={'maxHeight': '80vh', 'overflowY': 'scroll', 'paddingRight': 5}),
             dbc.Col( [
                      html.Div(id='sankey-clickable-wrapper', children=[html.Small(html.Mark("Click to view chart info"))], style={'text-align': 'left', 'width':'20%'}),
                      dcc.Graph(id='sankey-graph', style={'height':'35%', 'padding':'0'}), #dbc.Row(sankey_graph, style={'height':'35%'})
@@ -220,7 +222,7 @@ app.layout = html.Div([
                     width=7, style={'height': '100vh','position':'fixed', 'top': '130px', 'right': 0, })
         ], className='g-0'),  # Remove gutters between columns
     ], style={'maxWidth': '100%'})
-], style={'height': '100vh', 'overflowY': 'auto'})  # Set the overall layout height and hide overflow
+], style={'height': '100vh', 'overflowY': 'hidden'})  # Set the overall layout height and hide overflow
 
 # Callback to open the modal
 @app.callback(
