@@ -40,74 +40,6 @@ listings_df['last_1yr_availability']=pd.cut(365-listings_df['availability_365'],
 
 listings_df['term_rentals']=listings_df['minimum_nights'].apply(lambda x: "Short Term" if x<=30 else "Long Term" if x>30 else x)
 
-
-################################################
-# Create Sankey chart preprocess data
-sankey_df=listings_df[['id', 'neighbourhood_group', 'room_type', 'minimum_nights', 'price', 'host_is_superhost']]
-sankey_df['minimum_nights']=sankey_df['minimum_nights'].apply(lambda x: 'Long Term' if x>30 else 'Short Term' if x is not None else None)
-sankey_df['price']=sankey_df['price'].apply(lambda x: 'price: <100' if x<100 else 'price: 100-300' if x<300 else 
-                                            'price: 300-500' if x<500 else 'price: >500' if x>=500 else x)
-
-sankey_df['price']=sankey_df['price'].fillna('price_NA')
-sankey_df['host_is_superhost']=sankey_df['host_is_superhost'].fillna('superhost_NA')
-sankey_df['host_is_superhost']=sankey_df['host_is_superhost'].replace(['t', 'f'], ['superhost', 'not superhost'])
-
-sankey_df['all']='All Listing'
-sankey_df_grp=sankey_df.groupby(['all', 'neighbourhood_group', 'room_type', 'minimum_nights', 'price','host_is_superhost'])['id'].nunique().reset_index()
-
-layer_1_df=sankey_df_grp.groupby(['all', 'neighbourhood_group'])['id'].sum().reset_index()
-layer_1_df.columns=['source', 'target', 'value']
-
-layer_2_df=sankey_df_grp.groupby(['neighbourhood_group', 'room_type'])['id'].sum().reset_index()
-layer_2_df.columns=['source', 'target', 'value']
-
-layer_3_df=sankey_df_grp.groupby(['room_type', 'minimum_nights'])['id'].sum().reset_index()
-layer_3_df.columns=['source', 'target', 'value']
-
-layer_4_df=sankey_df_grp.groupby(['minimum_nights', 'price'])['id'].sum().reset_index()
-layer_4_df.columns=['source', 'target', 'value']
-
-layer_5_df=sankey_df_grp.groupby(['price', 'host_is_superhost'])['id'].sum().reset_index()
-layer_5_df.columns=['source', 'target', 'value']
-
-sankey_df_final=pd.concat([layer_2_df, layer_3_df, layer_4_df, layer_5_df])
-
-df_node = sankey_df_final.copy()
-# Get a list of all unique nodes
-unique_nodes = pd.concat([df_node['source'], df_node['target']]).unique()
-
-# Create a mapping from node names to indices
-node_mapping = {node: i for i, node in enumerate(unique_nodes)}
-
-# Use the mapping to transform the source and target columns to indices
-df_node['source'] = df_node['source'].map(node_mapping)
-df_node['target'] = df_node['target'].map(node_mapping)
-
-
-# Create the Sankey diagram
-sankey_fig = go.Figure(data=[go.Sankey(
-    node=dict(
-        pad=15,
-        thickness=20,
-        line=dict(color="black", width=0.5),
-        label=unique_nodes
-    ),
-    link=dict(
-        source=df_node['source'],  # Source indices
-        target=df_node['target'],  # Target indices
-        value=df_node['value'],    # Flow values
-    ))])
-
-# Update layout and show the plot
-sankey_fig.update_layout(title_text="Flow of listings to become Superhost-listings", 
-                         font_size=12,
-                         margin=dict(l=20, r=20, t=30, b=20), 
-                         title=dict(x=0.01, y=0.97),
-                         paper_bgcolor='aliceblue')
-
-#sankey_graph = dcc.Graph(figure=sankey_fig, id='sankey-graph', className="mb-2")
-########################################
-
 app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
 
 # Assuming neighbourhoods_df has a 'group' column that we'll use for the neighbourhood-group dropdown
@@ -116,6 +48,7 @@ neighbourhood_dropdown_options = [nb for nb in np.sort(listings_df['neighbourhoo
 
 app.layout = html.Div([
     dbc.Container(fluid=True, children=[
+        dbc.Row([
         dbc.Row([
             dbc.Col(html.H1("New York City Airbnb Dashboard", className="mb-2"), width="auto"),
             dbc.Col(dbc.Button("About Dashboard", id="open-info-1", color="primary", className="mb-2 ml-2"),width="auto"),
@@ -218,7 +151,7 @@ app.layout = html.Div([
             multi=False,
             className="mb-2"))]   
         ), 
-        
+        ], style={'position': 'sticky', 'top': '0px', 'zIndex': '1020','backgroundColor': '#FFFFFF', 'opacity':'1' }),
         dbc.Row([
             dbc.Col([
                 dbc.Card([dbc.CardBody([html.Div(id='stats-output', className="mb-2")])], className="mb-4"),
@@ -234,7 +167,12 @@ app.layout = html.Div([
 
                 dbc.Card([dbc.CardBody([
                 dcc.Graph(id='last_12m_availability', className="mb-2"),
-                dbc.Row(dcc.Dropdown(id='select-average-or-total', options=['Show Average Earnings', 'Show Total Earnings'],value='Show Average Earnings', multi=False,className="mb-2")),
+                dbc.Row([dbc.Row(html.Small(html.Mark("Toggle View")), className="mb-2"),
+                         dcc.Dropdown(id='select-average-or-total', 
+                                      options=['Show Average Earnings', 'Show Total Earnings'],
+                                      value='Show Average Earnings', 
+                                      multi=False,
+                                      className="mb-2")], style={'width':'50%'}),
                 html.Div(id='12m-availability-description', className="mb-2"),
                 ])], className="mb-4"),
 
@@ -250,8 +188,8 @@ app.layout = html.Div([
                 # ... potentially other components ...
             ], width=5, style={'maxHeight': 'calc(100vh - 50px)', 'overflowY': 'scroll', 'paddingRight': 5}),
             dbc.Col( [
-                     html.Div(id='sankey-clickable-wrapper', children=[html.Small(html.Mark("Click to view chart info"))], style={'text-align': 'right', 'margin-right':'12px'}),
-                     dcc.Graph(id='sankey-graph', style={'height':'35%'}), #dbc.Row(sankey_graph, style={'height':'35%'})
+                     html.Div(id='sankey-clickable-wrapper', children=[html.Small(html.Mark("Click to view chart info"))], style={'text-align': 'left', 'width':'20%'}),
+                     dcc.Graph(id='sankey-graph', style={'height':'35%', 'padding':'0'}), #dbc.Row(sankey_graph, style={'height':'35%'})
                      dbc.Modal([dbc.ModalBody(
                                               [dcc.Graph(id='sankey-chart-modal'),
                                                html.Small([html.P("   "),
@@ -279,7 +217,7 @@ app.layout = html.Div([
                                 ],id="modal-sankey",is_open=False,size="lg",),
                      dbc.Row(html.Iframe(id='map', srcDoc=None, width='100%'),style={ "height":'47%'}),
                     ], 
-                    width=7, style={'height': '100vh','position':'fixed', 'top': '140px', 'right': 0, 'bottom': 0})
+                    width=7, style={'height': '100vh','position':'fixed', 'top': '130px', 'right': 0, })
         ], className='g-0'),  # Remove gutters between columns
     ], style={'maxWidth': '100%'})
 ], style={'height': '100vh', 'overflowY': 'auto'})  # Set the overall layout height and hide overflow
@@ -394,10 +332,8 @@ def update_charts(selected_neighbourhood, check_super_host, listing_type, price_
     # Create Sankey chart preprocess data
     sankey_df=filtered_df[['id', 'neighbourhood_group', 'room_type', 'minimum_nights', 'price', 'host_is_superhost']]
     sankey_df['minimum_nights']=sankey_df['minimum_nights'].apply(lambda x: 'Long Term' if x>30 else 'Short Term' if x is not None else None)
-    sankey_df['price']=sankey_df['price'].apply(lambda x: 'price: <100' if x<100 else 'price: 100-300' if x<300 else 
-                                                'price: 300-500' if x<500 else 'price: >500' if x>=500 else x)
-
-    sankey_df['price']=sankey_df['price'].fillna('price_NA')
+    sankey_df['price']=pd.cut(sankey_df['price'], bins=[-np.inf, 100, 300, 500, np.inf], labels=['<100', '100-300', '300-500', '>500']).astype(str)
+    sankey_df['price']=sankey_df['price'].replace('nan', 'price_NA')
     sankey_df['host_is_superhost']=sankey_df['host_is_superhost'].fillna('superhost_NA')
     sankey_df['host_is_superhost']=sankey_df['host_is_superhost'].replace(['t', 'f'], ['superhost', 'not superhost'])
 
